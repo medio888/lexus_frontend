@@ -3,21 +3,55 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Header from "./components/header";
 import Home from "./pages/home";
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 function App() {
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/")
-      .then(res => res.json())
-      .then(data => setCategories(data))
-      .catch(err => console.log("Ошибка:", err));
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api/");
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data: Category[] = await res.json();
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (err: unknown) {
+        console.error("Ошибка загрузки категорий:", err);
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Неизвестная ошибка");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
   return (
     <BrowserRouter>
       <Header />
       <Routes>
-        <Route path="/" element={<Home categories={categories} />} />
+        <Route
+          path="/"
+          element={
+            <Home
+              categories={categories}
+              loading={loading}
+              error={error}
+            />
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
